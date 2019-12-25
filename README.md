@@ -16,7 +16,7 @@ E.g.
 ```python
 # coding: cfg
 
-def expression_grammar():
+grammar expression_grammar:
     start   = expr
     expr    = (term + '+' + expr
             |  term + '-' + expr)
@@ -56,7 +56,7 @@ Or directly: put it in `g.py`
 ```python
 # coding: cfg
 
-def expression_grammar():
+grammar expression_grammar:
     start   = expr
     expr    = (term + '+' + expr
             |  term + '-' + expr)
