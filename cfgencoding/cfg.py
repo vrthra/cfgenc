@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import codecs
 import re
 import ast
@@ -19,20 +21,33 @@ def define_expr(op):
     return (define_name(op),)
 
 def define_grammar(source, to_expr=lambda o: o.s):
+    src_lines = source.split('\n')
     module = ast.parse(source)
-    my_grammars = []
+    last_line = 0
+    lines = []
     for e in module.body:
+        if last_line is not None:
+            my_lines = '\n'.join(src_lines[last_line:e.lineno-1])
+            lines.append(my_lines)
+
         if isinstance(e, ast.FunctionDef):
-        # we only want to look at function definitions.
             fname = e.name
             grammar = funct_parser(e, to_expr)
-            my_grammars.append("%s = %s" % (fname, grammar))
-    return my_grammars
+            sline = "%s = %s" % (fname, grammar)
+            lines.append(sline)
+            last_line = None
+        else:
+            v = e.lineno
+            last_line = e.lineno - 1
+
+    my_lines = '\n'.join(src_lines[last_line:])
+    lines.append(my_lines)
+    return '\n'.join(lines)
 
 def define_ex_grammars(fn):
-    return "\n".join(define_grammar(fn, define_expr))
+    return define_grammar(fn, define_expr)
 
-class CFGCodec(codecs.Codec):
+class Codec(codecs.Codec):
     def encode(self, input, errors='strict'):
         return (input.encode('utf8'), len(input))
 
@@ -41,31 +56,27 @@ class CFGCodec(codecs.Codec):
         g = define_ex_grammars(input_string)
         return (g, len(input))
 
-class CFGIncrementalEncoder(codecs.IncrementalEncoder):
+class IncrementalEncoder(codecs.IncrementalEncoder):
     def encode(self, input, final=False):
-        return CFGCodec().encode(input)
+        return Codec().encode(input)
 
-class CFGIncrementalDecoder(codecs.IncrementalDecoder):
+class IncrementalDecoder(codecs.IncrementalDecoder):
     def decode(self, input, final=False):
-        return CFGCodec().decode(input)
+        return Codec().decode(input)[0]
 
-class CFGStreamReader(CFGCodec, codecs.StreamReader):
+class StreamReader(Codec, codecs.StreamReader):
     pass
 
-class CFGStreamWriter(CFGCodec, codecs.StreamWriter):
+class StreamWriter(Codec, codecs.StreamWriter):
     pass
 
-def search(encoding):
-    if encoding == "cfg":
-        return codecs.CodecInfo(
-            name='cfg',
-            encode=CFGCodec().encode,
-            decode=CFGCodec().decode,
-            incrementalencoder=CFGIncrementalEncoder,
-            incrementaldecoder=CFGIncrementalDecoder,
-            streamreader=CFGStreamReader,
-            streamwriter=CFGStreamWriter,
-        )
-    return None
-
-codecs.register(search)
+def getregentry():
+    return codecs.CodecInfo(
+        name='cfg',
+        encode=Codec().encode,
+        decode=Codec().decode,
+        incrementalencoder=IncrementalEncoder,
+        incrementaldecoder=IncrementalDecoder,
+        streamwriter=StreamWriter,
+        streamreader=StreamReader,
+    )
