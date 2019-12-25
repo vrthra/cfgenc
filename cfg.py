@@ -20,9 +20,18 @@ def define_expr(op):
         return (*define_expr(op.left), define_name(op.right))
     return (define_name(op),)
 
+def gdef(line):
+    if line.startswith('grammar '):
+        words = line.split(' ')
+        if not words[1].endswith(':'):
+            return line
+        name = words[1][0:-1]
+        return 'def %s():' % name
+    return line
+
 def define_grammar(source, to_expr=lambda o: o.s):
-    src_lines = source.split('\n')
-    module = ast.parse(source)
+    src_lines = [gdef(s) for s in source.split('\n')]
+    module = ast.parse('\n'.join(src_lines))
     last_line = 0
     lines = []
     for e in module.body:
